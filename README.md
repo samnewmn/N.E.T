@@ -36,7 +36,7 @@ Full API reference, configuration options, and internal system documentation is 
 **[View Documentation →](https://samnewmn.github.io/N.E.T)**
 
 ## Model Link
-**[Click here for Roblox model →](https://samnewmn.github.io/N.E.T)**
+**[Click here for Roblox model →](https://create.roblox.com/store/asset/85701138355241/NET)**
 
 ## License
 

@@ -33,7 +33,7 @@ NET.OnReceive(1, function(data) ... end)
 
 Full API reference, configuration options, and internal system documentation is available at:
 
-**[View Documentation →](https://samnewmn.github.io/N.E.T/#overview)**
+**[View Documentation →](https://samnewmn.github.io/N.E.T)**
 
 ## License
 

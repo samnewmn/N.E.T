@@ -83,6 +83,57 @@ DataService:update(player, "currency", function(current)
 end)
 ```
 
-## Next steps
+```md
+# NET API Reference
 
-- Browse the **complete API reference**: https://leifstout.github.io/dataService/api
+This page summarises the public API for NET (server + client). For automatic docs generation, annotate your source with docblocks compatible with Moonwave.
+
+---
+
+## Types
+
+### `Stream`
+- `Id: number` — stream identifier.
+- `Reliable: boolean` — true for ordered, reliable delivery.
+- `NextExpected: number` — next expected receive sequence.
+- `SendSequence: number` — next sequence number to use for outgoing nodes.
+- `SendBuffer: { [number]: BufferedNode }` — reliable nodes pending ACK.
+- `ReceiveBuffer: { [number]: Node }` — out-of-order nodes waiting for gaps to fill.
+
+### `Node`
+- `StreamId: number`
+- `Position: number`
+- `AckNumber: number`
+- `Reliable: boolean`
+- `Nonce: string`
+- `Timestamp: number`
+- `Token: string`
+- `Signature: string`
+- `Payload: table`
+
+### `BufferedNode`
+- `Node: Node`
+- `SentAt: number`
+- `Retries: number`
+
+### `Session`
+- `Player: Player`
+- `Token: string`
+- `Secret: string`
+- `CreatedAt: number`
+- `LastSeen: number`
+
+(Other internal types: `TokenBucket`, `BandwidthSample`, `DeadReckonSample`, `ScriptSignal`)
+
+---
+
+## Public Methods
+
+### `NET:RegisterStream(identifier: number, reliable: boolean)`
+Registers a stream on local peer. Must be called on both server and client with the same arguments prior to using the stream.
+
+**Server**: replicates the registration to connected clients.
+
+**Example**
+```lua
+NET:RegisterStream(1, true)

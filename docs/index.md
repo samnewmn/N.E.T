@@ -186,7 +186,7 @@ A **node** is the fundamental unit of data transmitted over a stream. Every call
 - Security fields (`Token`, `Nonce`, `Timestamp`, `Signature`)
 - An arbitrary `Payload` table
 
-On the server, nodes are **batched** per-player and flushed each `Heartbeat` to minimise remote event calls.
+On the server, nodes are **batched** per-player and flushed each `Heartbeat` to minimise remote event calls. Another name for a node is a packet, which is used in general computer science terms as what is transmitted between contexts.
 
 ### Sessions
 
@@ -234,6 +234,21 @@ When called on the **server**, the new stream is automatically replicated to all
 NET:RegisterStream(1, true)   -- reliable
 NET:RegisterStream(2, false)  -- unreliable
 NET:RegisterStream(10, true)  -- another reliable stream
+```
+
+### `UnregisterStream`
+
+```lua
+NET:UnregisterStream(identifier: number)
+```
+
+Unregisters a stream, removing it from both the stream table and the receive-signal table. Any buffered nodes for this stream are discarded. On the server, all connected clients are notified so they unregister their local copy too.
+
+**Example:**
+```lua
+NET:UnregisterStream(1)   -- Unregisters stream 1
+NET:UnregisterStream(2)  -- Unregisters stream 2
+NET:UnregisterStream(10)  -- Unregisters stream 10
 ```
 
 ---
@@ -419,6 +434,88 @@ if stream then
     print("Send sequence:", stream.SendSequence)
 end
 ```
+
+## Core Public ScriptSignals
+
+### `OnStateCleanup`
+
+```lua
+NET.OnStateCleanup:Connect(function(cleaningUpPlayer: Player)
+```
+
+Runs whenever a player's state is being cleaned up internally.
+
+### `OnAnomalyDetected`
+
+```lua
+NET.OnAnomalyDetected:Connect(function(playerWhichIsDetected: Player, message: string)
+```
+
+Runs whenever a player fails to pass anomaly tests, could be seen as an intruder.
+
+### `OnCriticalAnomalyDetected`
+
+```lua
+NET.OnCriticalAnomalyDetected:Connect(function(playerWhichIsDetected: Player, message: string)
+```
+
+Runs whenever a critical anomaly is detected, and needs urgent action (such as kicking the player on this signal being fired).
+
+### `OnInvalidSequence`
+
+```lua
+NET.OnInvalidSequence:Connect(function(stream: Stream, sequenceNumber: number)
+```
+
+Whenever an invalid sequence is detected, which is too far from the given window that is given in CONFIG.
+
+### `OnRateLimit`
+
+```lua
+NET.OnRateLimit:Connect(function(player: Player)
+```
+
+Runs whenever a player is rate limited.
+
+### `OnUnacknowledgedNode`
+
+```lua
+NET.OnUnacknowledgedNode:Connect(function(streamId: number, sequence: number, bufferedNode: BufferedNode)
+```
+
+Runs whenever a reliable node is unacknowledged, which signifies that the opposing context isnt recieving network invokations.
+
+### `OnInvalidNodeFromClient`
+
+```lua
+NET.OnInvalidNodeFromClient:Connect(function(player: Player, node: Node)
+```
+
+Runs whenever a client sends an invalid node back to the server.
+
+### `OnInvalidSession`
+
+```lua
+NET.OnInvalidSession:Connect(function(player: Player, nodeToken: string)
+```
+
+Runs whenever an invalid session is detected (expired session or invalid token).
+
+### `OnInvalidSignature`
+
+```lua
+NET.OnInvalidSignature:Connect(function(player: Player, node: Node)
+```
+
+Runs whenever an invalid signature is detected from a client, with the given Node.
+
+### `OnNodeProcessed`
+
+```lua
+NET.OnNodeProcessed:Connect(function(node: Node, player: Player?)
+```
+
+Runs whenever an ynode is processed internally
 
 ---
 
@@ -650,14 +747,10 @@ NET uses reserved stream ID `-1` for internal control messages. These are proces
 
 ## Limitations & Known Caveats
 
-**Signature strength.** The XOR-based MAC is not cryptographically secure. It will catch accidental corruption and low-effort tampering, but a motivated attacker with knowledge of the algorithm could potentially forge signatures. For high-stakes validation, consider augmenting with server-side authoritative game logic.
-
-**Server retransmission.** The retransmit loop iterates all streams' `SendBuffer` entries but does not know which player a buffered node belongs to in the server-side path. Server-to-client reliable retransmission is logged but the re-fire is a no-op in the current implementation — the batch flush on `Heartbeat` handles initial delivery, and the `SendBuffer` on the server side serves primarily as an acknowledgement tracker.
+**Signature strength.** The XOR-based HMAC is not secure enough. It will catch accidental corruption and low-effort tampering, but a motivated attacker with knowledge of the algorithm could potentially forge signatures. For high-stakes validation, consider augmenting with server-side authoritative game logic.
 
 **Single-module design.** NET requires the same module instance to be required by both server and client scripts. It auto-detects its context via `RunService:IsServer()`.
 
 **Stream registration order.** If you call `OnReceive` before `RegisterStream`, an assertion error will be thrown. Always register your streams first.
 
 **Sequence numbers are not validated on the client.** Nodes received from the server are delivered without the full security pipeline that applies to client→server traffic. This is by design — the server is trusted.
-
-**`OutgoingQueue` is not flushed until `ReadyPlayers[player] = true`.** Nodes sent to a player before they complete the handshake are queued and delivered once the `READY` signal arrives.
